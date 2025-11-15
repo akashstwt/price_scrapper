@@ -144,12 +144,6 @@ class SeleniumScraper:
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                 
-                # DEBUG: Save HTML only for first product (to avoid slow file I/O)
-                if self.request_count == 1:
-                    with open('debug_page.html', 'w', encoding='utf-8') as f:
-                        f.write(soup.prettify())
-                    print(f"📄 Saved page HTML to debug_page.html")
-                
                 # InkStation specific: Find product card
                 # Try multiple possible container structures
                 product = None

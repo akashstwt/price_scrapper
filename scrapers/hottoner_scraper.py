@@ -46,64 +46,96 @@ def scrape_hottoner(oem_code):
         
         soup = BeautifulSoup(response.text, "html.parser")
         
-        # Save HTML for debugging (only in test mode)
-        if os.environ.get('DEBUG_HOTTONER'):
-            with open('hottoner_debug.html', 'w', encoding='utf-8') as f:
-                f.write(soup.prettify())
-            print("📄 Saved HTML to hottoner_debug.html")
+        # HotToner has two possible page types:
+        # 1. Product detail page (single product - redirects directly)
+        # 2. Search results page (multiple products - shows table)
         
-        # HotToner specific: Find product in table structure
-        # Products are in <li> elements within product-list
-        product_list = soup.find('div', class_='product-list')
+        # Check for product detail page first
+        product_info_div = soup.find('div', class_='product-info')
         
-        if not product_list:
-            return {
-                "OEM_CODE": oem_code,
-                "Title": "Not Found",
-                "Price": "N/A",
-                "Website": "HotToner",
-                "Status": "Not Available",
-                "URL": url
-            }
+        if product_info_div:
+            # CASE 1: Product detail page (single product)
+            # Extract title from h1 tag
+            title = "N/A"
+            h1_title = soup.find('h1')
+            if h1_title:
+                title = safe_extract_text(h1_title)
+            
+            # Extract price from div.price > span.price-new
+            price = "N/A"
+            price_div = soup.find('div', class_='price')
+            if price_div:
+                price_span = price_div.find('span', class_='price-new')
+                if price_span:
+                    price_text = safe_extract_text(price_span)
+                    price = clean_price(price_text)
+            
+            # Extract availability status
+            status = "Available"
+            availability_text = soup.find(string=lambda x: x and 'Availability:' in str(x))
+            if availability_text:
+                parent = availability_text.find_parent()
+                if parent:
+                    stock_text = safe_extract_text(parent)
+                    if 'InStock' in stock_text:
+                        status = "In Stock"
+                    elif 'OutOfStock' in stock_text or 'Out of Stock' in stock_text:
+                        status = "Out of Stock"
+            
+            # Check for "Out of Stock" indicator
+            outofstock_div = soup.find('div', class_='OutofStock')
+            if outofstock_div:
+                status = "Out of Stock"
         
-        # Find first product (li element with table inside)
-        product_li = product_list.find('li')
-        
-        if not product_li:
-            return {
-                "OEM_CODE": oem_code,
-                "Title": "Not Found",
-                "Price": "N/A",
-                "Website": "HotToner",
-                "Status": "Not Available",
-                "URL": url
-            }
-        
-        # Extract title from td.pl-name
-        title = "N/A"
-        title_cell = product_li.find('td', class_='pl-name')
-        if title_cell:
-            title_link = title_cell.find('a')
-            if title_link:
-                title = safe_extract_text(title_link)
-        
-        # Extract price from td.pl-our-price
-        price = "N/A"
-        price_cell = product_li.find('td', class_='pl-our-price')
-        if price_cell:
-            price_text = safe_extract_text(price_cell)
-            price = clean_price(price_text)
-        
-        # Extract availability
-        status = "Available"
-        stock_span = product_li.find('span', string=lambda x: x and 'InStock' in str(x))
-        if stock_span:
-            stock_text = safe_extract_text(stock_span)
-            if 'InStock' in stock_text:
-                status = "In Stock"
         else:
-            # Check for out of stock indicators
-            if product_li.find(string=lambda x: x and 'out' in str(x).lower()):
+            # CASE 2: Search results page (multiple products in table)
+            product_list = soup.find('div', class_='product-list')
+            
+            if not product_list:
+                # Product not found
+                return {
+                    "OEM_CODE": oem_code,
+                    "Title": "Not Found",
+                    "Price": "N/A",
+                    "Website": "HotToner",
+                    "Status": "Not Available",
+                    "URL": url
+                }
+            
+            # Find first product (li element with table inside)
+            product_li = product_list.find('li')
+            
+            if not product_li:
+                return {
+                    "OEM_CODE": oem_code,
+                    "Title": "Not Found",
+                    "Price": "N/A",
+                    "Website": "HotToner",
+                    "Status": "Not Available",
+                    "URL": url
+                }
+            
+            # Extract title from td.pl-name
+            title = "N/A"
+            title_cell = product_li.find('td', class_='pl-name')
+            if title_cell:
+                title_link = title_cell.find('a')
+                if title_link:
+                    title = safe_extract_text(title_link)
+            
+            # Extract price from td.pl-our-price
+            price = "N/A"
+            price_cell = product_li.find('td', class_='pl-our-price')
+            if price_cell:
+                price_text = safe_extract_text(price_cell)
+                price = clean_price(price_text)
+            
+            # Extract availability status
+            status = "Available"
+            stock_indicator = product_li.find(string=lambda x: x and 'InStock' in str(x))
+            if stock_indicator:
+                status = "In Stock"
+            elif product_li.find(string=lambda x: x and ('OutOfStock' in str(x) or 'out of stock' in str(x).lower())):
                 status = "Out of Stock"
         
         # Add delay to avoid rate limiting
