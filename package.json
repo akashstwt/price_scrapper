@@ -1,0 +1,16 @@
+{
+  "name": "price-scraper-web-workspace",
+  "version": "1.0.0",
+  "description": "Price scraper web application workspace",
+  "scripts": {
+    "install": "cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python app.py",
+    "build:frontend": "cd frontend && npm run build",
+    "start:frontend": "cd frontend && npm start",
+    "start": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

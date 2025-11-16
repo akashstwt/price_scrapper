@@ -50,30 +50,9 @@ class SeleniumScraper:
         if self.headless:
             print("⚠️  Headless mode disabled - CAPTCHA requires manual interaction")
         
-        try:
-            # Setup ChromeDriver with better error handling
-            from webdriver_manager.chrome import ChromeDriverManager
-            from webdriver_manager.core.os_manager import ChromeType
-            
-            # Try to use ChromeDriverManager with cache
-            driver_path = ChromeDriverManager().install()
-            service = Service(driver_path)
-            driver = webdriver.Chrome(service=service, options=options)
-            
-        except Exception as e:
-            print(f"⚠️  ChromeDriverManager failed: {e}")
-            print("⚠️  Trying direct Chrome driver...")
-            
-            try:
-                # Fallback: Use system Chrome without service
-                driver = webdriver.Chrome(options=options)
-            except Exception as e2:
-                print(f"❌ Failed to initialize Chrome: {e2}")
-                raise Exception(
-                    "Chrome/ChromeDriver initialization failed. "
-                    "Please ensure Chrome browser is installed and try: "
-                    "pip install --upgrade selenium webdriver-manager"
-                )
+        # Setup ChromeDriver
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
         
         self.driver = driver
         return driver
